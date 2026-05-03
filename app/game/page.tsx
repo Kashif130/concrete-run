@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 
 export default function Game() {
@@ -20,23 +19,14 @@ export default function Game() {
     <div style={{ color: 'white', textAlign: 'center' }}>
       <h1>🗿 Concrete Run</h1>
       <p>Score: {score}</p>
-      <p>Lane: {pos}</p>
-
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        marginTop: 50
-      }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 50 }}>
         {[0,1,2].map(i => (
           <div key={i} style={{
-            width: 80,
-            height: 200,
-            margin: 10,
+            width: 80, height: 200, margin: 10,
             background: i === pos ? '#00f5ff' : '#222'
           }} />
         ))}
       </div>
-
       <p>Use ← → and SPACE to play</p>
     </div>
   );
