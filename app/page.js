@@ -1,75 +1,49 @@
 'use client';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-// ─── CONSTANTS ───────────────────────────────────────────────
 const W = 420, H = 700;
 const LANES = [90, 210, 330];
-const PLAYER_W = 52, PLAYER_H = 60;
-const OBS_W = 56, OBS_H = 36;
-const COIN_R = 14;
-const VP = { x: W / 2, y: H * 0.36 };
 
-// ─── PARTICLE SYSTEM ─────────────────────────────────────────
-function mkParticle(x, y, color) {
-  const angle = Math.random() * Math.PI * 2;
-  const speed = 1.5 + Math.random() * 3;
-  return { x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 2, life: 1, color, size: 2 + Math.random() * 3 };
-}
-
-// ─── DRAW MOAI (PREMIUM RENDERING) ───────────────────────────
-function drawMoai(ctx, x, y, w, h, frame, options = {}) {
-  const { glow = true, label = true, tilt = 0, flash = false } = options;
-  ctx.save();
-  ctx.translate(x + w / 2, y + h / 2);
-  ctx.rotate(tilt);
-  ctx.translate(-(x + w / 2), -(y + h / 2));
-
-  if (glow) {
-    const gr = ctx.createRadialGradient(x + w / 2, y + h / 2, 4, x + w / 2, y + h / 2, w * 1.1);
-    gr.addColorStop(0, flash ? 'rgba(255,80,80,0.5)' : 'rgba(0,245,180,0.28)');
-    gr.addColorStop(1, 'transparent');
-    ctx.fillStyle = gr;
-    ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, w * 1.1, 0, Math.PI * 2); ctx.fill();
-  }
-
-  // Head shape & Details logic
-  const hg = ctx.createLinearGradient(x, y, x + w, y + h);
-  hg.addColorStop(0, flash ? '#ffaaaa' : '#ddd5c2');
-  hg.addColorStop(1, flash ? '#884444' : '#8a7d6a');
-  ctx.fillStyle = hg;
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, 15);
-  ctx.fill();
-
-  // Face Labels
-  if (label) {
-    ctx.fillStyle = 'rgba(0,245,180,0.9)';
-    ctx.font = `bold ${w * 0.15}px "Courier New", monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText('CONCRETE', x + w / 2, y + h * 0.9);
-  }
-  ctx.restore();
-}
-
-// ─── MAIN COMPONENT ───────────────────────────────────────────
-export default function ConcreteRunStandalone() {
+export default function ConcreteRunPro() {
   const canvasRef = useRef(null);
-  const [gameState, setGameState] = useState('start'); 
-  const [localScore, setLocalScore] = useState(0);
+  const [gameState, setGameState] = useState('start');
+  const [score, setScore] = useState(0);
 
-  const gameRef = useRef({
-    score: 0, coins: 0, lane: 1, targetLane: 1,
-    px: LANES[1], py: H - 120,
-    obstacles: [], particles: [],
-    speed: 4.5, frame: 0, scrollY: 0,
-    shake: 0, flash: false
+  const game = useRef({
+    px: LANES[1], // Player X
+    py: H - 120,   // Player Y (Fixed)
+    targetLane: 1,
+    obstacles: [],
+    speed: 5,
+    frame: 0,
+    score: 0
   });
 
-  const resetGame = () => {
-    const g = gameRef.current;
-    g.score = 0; g.lane = 1; g.targetLane = 1;
-    g.px = LANES[1]; g.speed = 4.5;
-    g.obstacles = []; g.particles = [];
+  // Character Setting Logic
+  const drawPlayer = (ctx, x, y) => {
+    ctx.save();
+    // Shadow nichey
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 10, 25, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Moai Character
+    ctx.font = '60px serif'; // Size thora bara kiya hai
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Tilt effect movement ke waqt
+    const tilt = (game.current.targetLane - (game.current.px === LANES[game.current.targetLane] ? game.current.targetLane : (game.current.px / 140))) * 0.2;
+    ctx.translate(x, y);
+    ctx.rotate(tilt);
+    ctx.fillText('🗿', 0, 0);
+    ctx.restore();
+  };
+
+  const reset = () => {
+    game.current = { px: LANES[1], py: H - 120, targetLane: 1, obstacles: [], speed: 5, frame: 0, score: 0 };
+    setScore(0);
     setGameState('running');
   };
 
@@ -78,44 +52,67 @@ export default function ConcreteRunStandalone() {
     const ctx = canvas.getContext('2d');
 
     function loop() {
-      const g = gameRef.current;
+      const g = game.current;
       g.frame++;
-      
-      ctx.clearRect(0, 0, W, H);
-      
-      // Deep Background
-      ctx.fillStyle = '#03030a';
-      ctx.fillRect(0, 0, W, H);
 
       if (gameState === 'running') {
-        g.scrollY += g.speed;
-        g.speed = 4.5 + (g.score / 20); // Dynamic Volatility logic
-        
-        // Horizontal Movement Smoothing
-        g.px += (LANES[g.targetLane] - g.px) * 0.2;
+        // Smooth horizontal movement (Interpolation)
+        g.px += (LANES[g.targetLane] - g.px) * 0.15;
+
+        // Obstacle logic
+        if (g.frame % 50 === 0) {
+          g.obstacles.push({ x: LANES[Math.floor(Math.random() * 3)], y: -50 });
+        }
+
+        g.obstacles.forEach((obs, i) => {
+          obs.y += g.speed;
+          
+          // Accurate Collision (Hitbox set kiya hai)
+          if (Math.abs(g.px - obs.x) < 45 && Math.abs(g.py - obs.y) < 45) {
+            setGameState('gameover');
+          }
+
+          if (obs.y > H) {
+            g.obstacles.splice(i, 1);
+            g.score += 10;
+            setScore(g.score);
+            g.speed += 0.1;
+          }
+        });
       }
 
-      // Draw Player
-      drawMoai(ctx, g.px - 26, g.py - 30, 52, 60, g.frame);
+      // Drawing
+      ctx.fillStyle = '#050510'; 
+      ctx.fillRect(0, 0, W, H);
 
-      // HUD
-      ctx.fillStyle = '#00f5c8';
-      ctx.font = '900 24px "Courier New"';
-      ctx.fillText(`YIELD: ${g.score}`, 20, 40);
+      // Roads
+      ctx.strokeStyle = 'rgba(0, 245, 255, 0.15)';
+      ctx.setLineDash([10, 10]);
+      LANES.forEach(l => {
+        ctx.beginPath(); ctx.moveTo(l, 0); ctx.lineTo(l, H); ctx.stroke();
+      });
+      ctx.setLineDash([]);
 
-      requestAnimationFrame(loop);
+      // Draw Character
+      drawPlayer(ctx, g.px, g.py);
+
+      // Draw Obstacles
+      g.obstacles.forEach(obs => {
+        ctx.font = '40px Arial';
+        ctx.fillText('🔴', obs.x, obs.y); // Bad blocks
+      });
+
+      if (gameState === 'running') requestAnimationFrame(loop);
     }
 
     const handleInput = (e) => {
-      const g = gameRef.current;
-      if (e.key === 'ArrowLeft') g.targetLane = Math.max(0, g.targetLane - 1);
-      if (e.key === 'ArrowRight') g.targetLane = Math.min(2, g.targetLane + 1);
-      if (e.key === ' ' && gameState !== 'running') resetGame();
+      if (e.key === 'ArrowLeft') game.current.targetLane = Math.max(0, game.current.targetLane - 1);
+      if (e.key === 'ArrowRight') game.current.targetLane = Math.max(0, Math.min(2, game.current.targetLane + 1));
+      if (e.key === ' ' && gameState !== 'running') reset();
     };
 
     window.addEventListener('keydown', handleInput);
     const raf = requestAnimationFrame(loop);
-
     return () => {
       window.removeEventListener('keydown', handleInput);
       cancelAnimationFrame(raf);
@@ -123,12 +120,14 @@ export default function ConcreteRunStandalone() {
   }, [gameState]);
 
   return (
-    <div style={{ background: '#000', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <canvas ref={canvasRef} width={W} height={H} style={{ boxShadow: '0 0 30px rgba(0,245,180,0.2)', borderRadius: '8px' }} />
-      {gameState === 'start' && (
-        <div style={{ position: 'absolute', textAlign: 'center', color: '#00f5c8' }}>
-          <h1 style={{ fontSize: '3rem' }}>CONCRETE RUN</h1>
-          <p>PRESS [SPACE] TO START</p>
+    <div style={{ background: '#000', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: '#00f5ff', fontSize: '20px', fontFamily: 'monospace', marginBottom: '10px' }}>YIELD_LEVEL: {score}</div>
+      <canvas ref={canvasRef} width={W} height={H} style={{ border: '1px solid #333', borderRadius: '15px', background: '#000' }} />
+      
+      {gameState !== 'running' && (
+        <div style={{ position: 'absolute', textAlign: 'center', color: '#fff', background: 'rgba(0,0,0,0.9)', padding: '30px', border: '1px solid #00f5ff' }}>
+          <h1 style={{ fontSize: '32px' }}>{gameState === 'start' ? 'CONCRETE RUN' : 'LIQUIDATED'}</h1>
+          <button onClick={reset} style={{ padding: '10px 20px', background: '#00f5ff', cursor: 'pointer', border: 'none', fontWeight: 'bold' }}>START MISSION</button>
         </div>
       )}
     </div>
