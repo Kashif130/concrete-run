@@ -1,11 +1,21 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
+{
+  "name": "concrete-run",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
-  typescript: {
-    ignoreBuildErrors: true,
+  "dependencies": {
+    "next": "14.2.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
-};
-
-module.exports = nextConfig;
+  "devDependencies": {
+    "typescript": "5.0.0",
+    "@types/react": "18.2.0",
+    "@types/react-dom": "18.2.0",
+    "@types/node": "20.0.0"
+  }
+}
