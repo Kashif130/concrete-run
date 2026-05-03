@@ -568,9 +568,7 @@ export default function ConcreteRunPremium() {
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(`⬡  ${g.coins} POINTS`, W / 2, H * 0.72);
 
-        ctx.fillStyle = 'rgba(0,245,180,0.35)';
-        ctx.font = `700 9px "Courier New"`;
-        ctx.fillText('CLAIM REWARDS AT POINTS.CONCRETE.XYZ', W / 2, H * 0.755);
+
 
         const bp2 = Math.sin(g.frame * 0.09) * 4;
         ctx.save();
